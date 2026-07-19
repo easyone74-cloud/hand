@@ -256,8 +256,13 @@
         }
 
         @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
+            0%,
+            100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
+            }
         }
 
         .entry-actions .badge-running {
@@ -269,7 +274,7 @@
 
     <!-- TITEL -->
     <div class="card">
-        <div class="card-title">🔧 Service Zeit 🔧</div>
+        <div class="card-title">⚡ Service Zeit</div>
         <div class="card-subtitle">© 2026 H. Neuhaus</div>
     </div>
 
@@ -332,23 +337,14 @@
             try { return new Date(str); } catch { return null; }
         }
 
-        // ===== NEUE DAUER-FUNKTION mit 15-Minuten-Rundung =====
+        // ===== EXAKTE DAUER in Std & Min =====
         function dauerAnzeigen(sek) {
             if (!sek || sek < 0) return '0 Min';
 
-            // 1. Sekunden in Minuten umrechnen
-            let min = sek / 60;
+            const min = Math.floor(sek / 60);
+            const std = Math.floor(min / 60);
+            const restMin = min % 60;
 
-            // 2. Auf die nächste Viertelstunde AUFRUNDEN
-            // 15 Minuten = 0.25 Stunden
-            const viertelStunden = Math.ceil(min / 15);
-            const gerundeteMinuten = viertelStunden * 15;
-
-            // 3. In Stunden und Minuten umrechnen
-            const std = Math.floor(gerundeteMinuten / 60);
-            const restMin = gerundeteMinuten % 60;
-
-            // 4. Formatieren
             if (std === 0) {
                 return `${restMin} Min`;
             } else if (restMin === 0) {
