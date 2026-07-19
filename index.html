@@ -11,11 +11,12 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black" />
     <link rel="apple-touch-icon" href="/icon-192.png" />
-    <link rel="apple-touch-icon" sizes="152x152" href="/icon-192.png" />
-    <link rel="apple-touch-icon" sizes="167x167" href="/icon-192.png" />
-    <link rel="apple-touch-icon" sizes="180x180" href="/icon-192.png" />
 
-    <!-- ===== SERVICE WORKER REGISTRIERUNG ===== -->
+    <!-- ===== TESSERACT.js ===== -->
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" />
+
+    <!-- ===== SERVICE WORKER ===== -->
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
@@ -88,7 +89,6 @@
             font-weight: 500;
         }
 
-        /* ===== PULL-TO-REFRESH ===== */
         .pull-container {
             position: relative;
             overflow: hidden;
@@ -120,7 +120,9 @@
         }
 
         @keyframes spin {
-            to { transform: rotate(360deg); }
+            to {
+                transform: rotate(360deg);
+            }
         }
 
         input {
@@ -186,6 +188,14 @@
         }
         .btn-red:hover {
             background: #ef4444;
+        }
+
+        .btn-orange {
+            background: #d97706;
+            color: white;
+        }
+        .btn-orange:hover {
+            background: #f59e0b;
         }
 
         .btn-sm {
@@ -294,12 +304,31 @@
         }
 
         @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
+            0%,
+            100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
+            }
         }
 
         .entry-actions .badge-running {
             text-align: center;
+        }
+
+        /* Kamera-View */
+        .camera-card video {
+            width: 100%;
+            max-height: 400px;
+            border-radius: 12px;
+            margin-bottom: 10px;
+            background: #000;
+        }
+
+        .camera-card .btn {
+            width: 100%;
+            margin-top: 6px;
         }
     </style>
 </head>
@@ -328,6 +357,7 @@
             <input id="inputStreet" type="text" placeholder="📍 Straße / Ort" />
             <div class="row">
                 <button class="btn btn-blue" onclick="save()">➕ NEUER AUFTRAG</button>
+                <button class="btn btn-orange" onclick="openCamera()">📷 SCANNEN</button>
                 <button class="btn btn-red" onclick="deleteDay()">🗑️ TAG LÖSCHEN</button>
             </div>
         </div>
@@ -401,7 +431,7 @@
             if (refreshInterval) clearInterval(refreshInterval);
             refreshInterval = setInterval(() => {
                 refreshDataSilent();
-            }, 60000); // 60 Sekunden
+            }, 60000);
         }
 
         function resetAutoRefresh() {
@@ -411,7 +441,7 @@
             }
         }
 
-        // ===== DATEN LADEN (mit Status) =====
+        // ===== DATEN LADEN =====
         async function loadData() {
             try {
                 const res = await fetch(`${SUPABASE_URL}/rest/v1/auftraege?select=*&order=erstellt_am.asc`, { headers });
@@ -427,7 +457,6 @@
             }
         }
 
-        // ===== DATEN LADEN (silent, für Auto-Refresh) =====
         async function refreshDataSilent() {
             try {
                 const res = await fetch(`${SUPABASE_URL}/rest/v1/auftraege?select=*&order=erstellt_am.asc`, { headers });
@@ -438,12 +467,9 @@
                     const rows = auftraege.filter(a => a.tag === heute);
                     document.getElementById('countBadge').textContent = rows.length;
                 }
-            } catch (e) {
-                // Silent fail – beim nächsten Versuch klappt's
-            }
+            } catch (e) {}
         }
 
-        // ===== LISTE ANZEIGEN =====
         function renderList() {
             const container = document.getElementById('entries');
             const heute = new Date().toISOString().slice(0, 10);
@@ -504,7 +530,7 @@
             }).join('');
         }
 
-        // ===== SPEICHERN =====
+        // ===== CRUD =====
         async function save() {
             const name = document.getElementById('inputName').value.trim();
             const street = document.getElementById('inputStreet').value.trim();
@@ -536,7 +562,6 @@
             }
         }
 
-        // ===== STARTEN =====
         async function startJob(id) {
             try {
                 const startzeit = jetztLokalISO();
@@ -556,7 +581,6 @@
             }
         }
 
-        // ===== STOPPEN =====
         async function stopJob(id) {
             try {
                 const res = await fetch(`${SUPABASE_URL}/rest/v1/auftraege?id=eq.${id}`, { headers });
@@ -587,7 +611,6 @@
             }
         }
 
-        // ===== LÖSCHEN =====
         async function deleteJob(id) {
             if (!confirm('Diesen Auftrag wirklich löschen?')) return;
             try {
@@ -615,6 +638,135 @@
             const el = document.getElementById('status');
             el.textContent = msg;
             el.style.color = color;
+        }
+
+        // ===== KAMERA & OCR =====
+        function openCamera() {
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                setStatus('❌ Kamera nicht verfügbar', '#ef4444');
+                return;
+            }
+
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then(stream => {
+                    const video = document.createElement('video');
+                    video.srcObject = stream;
+                    video.autoplay = true;
+                    video.style.width = '100%';
+                    video.style.maxHeight = '400px';
+                    video.style.borderRadius = '12px';
+                    video.style.marginBottom = '10px';
+
+                    const captureBtn = document.createElement('button');
+                    captureBtn.textContent = '📸 Foto aufnehmen';
+                    captureBtn.className = 'btn btn-blue';
+                    captureBtn.style.width = '100%';
+
+                    const cancelBtn = document.createElement('button');
+                    cancelBtn.textContent = '❌ Abbrechen';
+                    cancelBtn.className = 'btn btn-ghost';
+                    cancelBtn.style.width = '100%';
+                    cancelBtn.style.marginTop = '8px';
+
+                    const container = document.getElementById('pullContainer');
+                    const existingCard = container.querySelector('.camera-card');
+                    if (existingCard) existingCard.remove();
+
+                    const card = document.createElement('div');
+                    card.className = 'card camera-card';
+                    card.appendChild(video);
+                    card.appendChild(captureBtn);
+                    card.appendChild(cancelBtn);
+                    container.prepend(card);
+
+                    captureBtn.onclick = function() {
+                        const canvas = document.createElement('canvas');
+                        canvas.width = video.videoWidth;
+                        canvas.height = video.videoHeight;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                        const imageData = canvas.toDataURL('image/png');
+
+                        stream.getTracks().forEach(track => track.stop());
+                        card.remove();
+
+                        setStatus('📷 Analysiere Bild...', '#60a5fa');
+                        performOCR(imageData);
+                    };
+
+                    cancelBtn.onclick = function() {
+                        stream.getTracks().forEach(track => track.stop());
+                        card.remove();
+                        setStatus('📷 Abgebrochen', '#f59e0b');
+                    };
+                })
+                .catch(err => {
+                    setStatus(`❌ Kamera-Fehler: ${err.message}`, '#ef4444');
+                });
+        }
+
+        async function performOCR(imageData) {
+            try {
+                const result = await Tesseract.recognize(imageData, 'deu', {
+                    logger: m => {
+                        if (m.status === 'recognizing text') {
+                            setStatus(`📷 OCR: ${Math.round(m.progress * 100)}%`, '#60a5fa');
+                        }
+                    }
+                });
+
+                const text = result.data.text.trim();
+                console.log('📝 OCR Ergebnis:', text);
+
+                if (!text || text.length < 3) {
+                    setStatus('❌ Kein Text erkannt. Bitte manuell eingeben.', '#ef4444');
+                    return;
+                }
+
+                const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 2);
+                let kunde = '';
+                let strasse = '';
+
+                const strassenKeywords = ['straße', 'str', 'weg', 'gasse', 'platz', 'allee', 'ring', 'damm', 'berg', 'feld', 'hof'];
+
+                for (const line of lines) {
+                    const lower = line.toLowerCase();
+                    const hasNumber = /\d/.test(line);
+                    const hasStreetKeyword = strassenKeywords.some(k => lower.includes(k));
+
+                    if (hasNumber || hasStreetKeyword) {
+                        if (!strasse) strasse = line;
+                    } else {
+                        if (!kunde) kunde = line;
+                    }
+                }
+
+                if (!strasse && lines.length > 1) {
+                    strasse = lines[1];
+                    if (!kunde) kunde = lines[0];
+                }
+
+                if (kunde) document.getElementById('inputName').value = kunde;
+                if (strasse) document.getElementById('inputStreet').value = strasse;
+
+                setStatus(`✅ OCR erkannt: ${kunde || 'kein Name'}`, '#22c55e');
+
+                if (confirm(`Erkannt:\nKunde: ${kunde || '❌ nicht erkannt'}\nStraße: ${strasse || '❌ nicht erkannt'}\n\nMöchtest du diese Daten übernehmen?`)) {
+                    if (kunde && kunde.trim()) {
+                        document.getElementById('inputName').value = kunde;
+                    }
+                    if (strasse && strasse.trim()) {
+                        document.getElementById('inputStreet').value = strasse;
+                    }
+                    setStatus('✅ Daten übernommen', '#22c55e');
+                } else {
+                    setStatus('⏸ OCR verworfen', '#f59e0b');
+                }
+
+            } catch (err) {
+                console.error('❌ OCR Fehler:', err);
+                setStatus(`❌ OCR Fehler: ${err.message}`, '#ef4444');
+            }
         }
 
         // ===== PULL-TO-REFRESH =====
@@ -646,10 +798,8 @@
             const indicator = document.getElementById('pullIndicator');
             if (indicator.classList.contains('active')) {
                 indicator.classList.remove('active');
-                // Manuell aktualisieren
                 setStatus('🔄 Aktualisiere...', '#60a5fa');
                 loadData().then(() => {
-                    // Timer zurücksetzen
                     resetAutoRefresh();
                 });
             }
