@@ -96,7 +96,7 @@
             align-items: center;
             justify-content: center;
             gap: 6px;
-            flex: 1; /* ← NEU: Buttons teilen sich den Platz */
+            flex: 1;
         }
 
         .btn:active {
@@ -139,6 +139,7 @@
             padding: 6px 14px;
             font-size: 13px;
             border-radius: 8px;
+            width: 100%;
         }
 
         .btn-ghost {
@@ -158,6 +159,17 @@
 
         .row-center {
             justify-content: center;
+        }
+
+        /* NEU: vertikale Button-Gruppe in der Entry */
+        .entry-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            align-items: stretch;
+            flex-shrink: 0;
+            margin-left: 12px;
+            min-width: 90px;
         }
 
         .entry {
@@ -197,14 +209,6 @@
             font-size: 13px;
             font-weight: 500;
             margin-top: 4px;
-        }
-
-        .entry .actions {
-            display: flex;
-            gap: 6px;
-            align-items: center;
-            flex-shrink: 0;
-            margin-left: 12px;
         }
 
         .text-muted {
@@ -250,6 +254,8 @@
             font-size: 11px;
             font-weight: 600;
             animation: pulse 1.5s infinite;
+            display: inline-block;
+            text-align: center;
         }
 
         @keyframes pulse {
@@ -260,6 +266,11 @@
             50% {
                 opacity: 0.5;
             }
+        }
+
+        /* LIVE-Badge in der vertikalen Gruppe zentrieren */
+        .entry-actions .badge-running {
+            text-align: center;
         }
     </style>
 </head>
@@ -388,16 +399,23 @@
                     dauerText = ` (${dauerAnzeigen(a.dauer)})`;
                 }
 
-                let actionBtn = '';
+                let actionsHtml = '';
                 if (a.status === 0) {
-                    actionBtn = `<button class="btn btn-green btn-sm" onclick="startJob(${a.id})">▶️ STARTEN</button>`;
+                    actionsHtml = `
+                        <button class="btn btn-green btn-sm" onclick="startJob(${a.id})">▶️ STARTEN</button>
+                        <button class="btn btn-ghost btn-sm" onclick="deleteJob(${a.id})" style="color:#94a3b8;">🗑️ LÖSCHEN</button>
+                    `;
                 } else if (a.status === 1) {
-                    actionBtn = `
+                    actionsHtml = `
                         <span class="badge-running">LIVE</span>
                         <button class="btn btn-red btn-sm" onclick="stopJob(${a.id})">⏹ STOPPEN</button>
+                        <button class="btn btn-ghost btn-sm" onclick="deleteJob(${a.id})" style="color:#94a3b8;">🗑️ LÖSCHEN</button>
                     `;
                 } else {
-                    actionBtn = `<span style="color:#22c55e; font-weight:600;">✔️ Erledigt</span>`;
+                    actionsHtml = `
+                        <span style="color:#22c55e; font-weight:600; text-align:center;">✔️ Erledigt</span>
+                        <button class="btn btn-ghost btn-sm" onclick="deleteJob(${a.id})" style="color:#94a3b8;">🗑️ LÖSCHEN</button>
+                    `;
                 }
 
                 return `
@@ -409,9 +427,8 @@
                                 ${statusText(a.status)}${dauerText}
                             </div>
                         </div>
-                        <div class="actions">
-                            ${actionBtn}
-                            <button class="btn btn-ghost btn-sm" onclick="deleteJob(${a.id})" style="color:#94a3b8;">🗑️</button>
+                        <div class="entry-actions">
+                            ${actionsHtml}
                         </div>
                     </div>
                 `;
