@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Service Zeit</title>
     <style>
         * {
@@ -60,6 +60,41 @@
 
         .status-bar .status-text {
             font-weight: 500;
+        }
+
+        /* ===== PULL-TO-REFRESH ===== */
+        .pull-container {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .pull-indicator {
+            text-align: center;
+            color: #64748b;
+            font-size: 13px;
+            padding: 8px 0;
+            transform: translateY(-40px);
+            transition: transform 0.2s;
+        }
+
+        .pull-indicator.active {
+            transform: translateY(0);
+        }
+
+        .pull-indicator .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #2a3038;
+            border-top-color: #60a5fa;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
         }
 
         input {
@@ -127,14 +162,6 @@
             background: #ef4444;
         }
 
-        .btn-orange {
-            background: #d97706;
-            color: white;
-        }
-        .btn-orange:hover {
-            background: #f59e0b;
-        }
-
         .btn-sm {
             padding: 6px 14px;
             font-size: 13px;
@@ -155,10 +182,6 @@
             display: flex;
             gap: 10px;
             flex-wrap: wrap;
-        }
-
-        .row-center {
-            justify-content: center;
         }
 
         .entry-actions {
@@ -218,17 +241,6 @@
             text-align: center;
         }
 
-        .mt-10 {
-            margin-top: 10px;
-        }
-
-        .divider {
-            border: none;
-            height: 1px;
-            background: #1e293b;
-            margin: 16px 0;
-        }
-
         ::-webkit-scrollbar {
             width: 6px;
         }
@@ -256,13 +268,8 @@
         }
 
         @keyframes pulse {
-            0%,
-            100% {
-                opacity: 1;
-            }
-            50% {
-                opacity: 0.5;
-            }
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
         }
 
         .entry-actions .badge-running {
@@ -274,7 +281,7 @@
 
     <!-- TITEL -->
     <div class="card">
-        <div class="card-title">🔧 Service Zeit 🔧</div>
+        <div class="card-title">⚡ Service Zeit</div>
         <div class="card-subtitle">© 2026 H. Neuhaus</div>
     </div>
 
@@ -283,23 +290,30 @@
         <span id="status" class="status-text">📡 Lade Daten...</span>
     </div>
 
-    <!-- EINGABE -->
-    <div class="card">
-        <input id="inputName" type="text" placeholder="👤 Kunde / Firma" />
-        <input id="inputStreet" type="text" placeholder="📍 Straße / Ort" />
-        <div class="row">
-            <button class="btn btn-blue" onclick="save()">➕ NEUER AUFTRAG</button>
-            <button class="btn btn-red" onclick="deleteDay()">🗑️ TAG LÖSCHEN</button>
+    <!-- PULL-TO-REFRESH CONTAINER -->
+    <div class="pull-container" id="pullContainer">
+        <div class="pull-indicator" id="pullIndicator">
+            <span class="spinner"></span> Aktualisiere...
         </div>
-    </div>
 
-    <!-- LISTE -->
-    <div class="card">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-            <h3 style="font-size:18px; font-weight:600; color:#e8edf3;">📋 Aufträge</h3>
-            <span id="countBadge" style="background:#1e293b; padding:4px 14px; border-radius:20px; font-size:13px; color:#94a3b8;">0</span>
+        <!-- EINGABE -->
+        <div class="card">
+            <input id="inputName" type="text" placeholder="👤 Kunde / Firma" />
+            <input id="inputStreet" type="text" placeholder="📍 Straße / Ort" />
+            <div class="row">
+                <button class="btn btn-blue" onclick="save()">➕ NEUER AUFTRAG</button>
+                <button class="btn btn-red" onclick="deleteDay()">🗑️ TAG LÖSCHEN</button>
+            </div>
         </div>
-        <div id="entries"></div>
+
+        <!-- LISTE -->
+        <div class="card">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                <h3 style="font-size:18px; font-weight:600; color:#e8edf3;">📋 Aufträge</h3>
+                <span id="countBadge" style="background:#1e293b; padding:4px 14px; border-radius:20px; font-size:13px; color:#94a3b8;">0</span>
+            </div>
+            <div id="entries"></div>
+        </div>
     </div>
 
     <script>
@@ -314,6 +328,7 @@
         };
 
         let auftraege = [];
+        let refreshInterval = null;
 
         // ===== HILFSFUNKTIONEN =====
         function jetztLokalISO() {
@@ -337,21 +352,14 @@
             try { return new Date(str); } catch { return null; }
         }
 
-        // ===== EXAKTE DAUER in Std & Min =====
         function dauerAnzeigen(sek) {
             if (!sek || sek < 0) return '0 Min';
-
             const min = Math.floor(sek / 60);
             const std = Math.floor(min / 60);
             const restMin = min % 60;
-
-            if (std === 0) {
-                return `${restMin} Min`;
-            } else if (restMin === 0) {
-                return `${std} Std`;
-            } else {
-                return `${std} Std ${restMin} Min`;
-            }
+            if (std === 0) return `${restMin} Min`;
+            if (restMin === 0) return `${std} Std`;
+            return `${std} Std ${restMin} Min`;
         }
 
         function statusColor(status) {
@@ -362,7 +370,22 @@
             return status === 0 ? '⏸ Bereit' : status === 1 ? '🔴 Läuft' : '✅ Fertig';
         }
 
-        // ===== DATEN LADEN =====
+        // ===== AUTO-REFRESH =====
+        function startAutoRefresh() {
+            if (refreshInterval) clearInterval(refreshInterval);
+            refreshInterval = setInterval(() => {
+                refreshDataSilent();
+            }, 60000); // 60 Sekunden
+        }
+
+        function resetAutoRefresh() {
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
+                startAutoRefresh();
+            }
+        }
+
+        // ===== DATEN LADEN (mit Status) =====
         async function loadData() {
             try {
                 const res = await fetch(`${SUPABASE_URL}/rest/v1/auftraege?select=*&order=erstellt_am.asc`, { headers });
@@ -375,6 +398,22 @@
                 }
             } catch (e) {
                 setStatus(`❌ Fehler: ${e.message}`, '#ef4444');
+            }
+        }
+
+        // ===== DATEN LADEN (silent, für Auto-Refresh) =====
+        async function refreshDataSilent() {
+            try {
+                const res = await fetch(`${SUPABASE_URL}/rest/v1/auftraege?select=*&order=erstellt_am.asc`, { headers });
+                if (res.ok) {
+                    auftraege = await res.json();
+                    renderList();
+                    const heute = new Date().toISOString().slice(0, 10);
+                    const rows = auftraege.filter(a => a.tag === heute);
+                    document.getElementById('countBadge').textContent = rows.length;
+                }
+            } catch (e) {
+                // Silent fail – beim nächsten Versuch klappt's
             }
         }
 
@@ -552,8 +591,47 @@
             el.style.color = color;
         }
 
+        // ===== PULL-TO-REFRESH =====
+        let touchStartY = 0;
+        let isPulling = false;
+        const pullThreshold = 80;
+
+        document.addEventListener('touchstart', (e) => {
+            if (window.scrollY === 0) {
+                touchStartY = e.touches[0].clientY;
+                isPulling = true;
+            }
+        });
+
+        document.addEventListener('touchmove', (e) => {
+            if (!isPulling) return;
+            const diff = e.touches[0].clientY - touchStartY;
+            const indicator = document.getElementById('pullIndicator');
+            if (diff > pullThreshold) {
+                indicator.classList.add('active');
+            } else {
+                indicator.classList.remove('active');
+            }
+        });
+
+        document.addEventListener('touchend', () => {
+            if (!isPulling) return;
+            isPulling = false;
+            const indicator = document.getElementById('pullIndicator');
+            if (indicator.classList.contains('active')) {
+                indicator.classList.remove('active');
+                // Manuell aktualisieren
+                setStatus('🔄 Aktualisiere...', '#60a5fa');
+                loadData().then(() => {
+                    // Timer zurücksetzen
+                    resetAutoRefresh();
+                });
+            }
+        });
+
         // ===== START =====
         loadData();
+        startAutoRefresh();
     </script>
 
 </body>
