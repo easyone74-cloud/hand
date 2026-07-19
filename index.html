@@ -70,6 +70,27 @@
 
         let auftraege = [];
 
+        // ===== HILFSFUNKTIONEN =====
+        function jetztISO() {
+            // UTC-Zeit im ISO-Format ohne Millisekunden
+            return new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
+        }
+
+        function parseSupabaseZeit(str) {
+            if (!str) return null;
+            // Supabase liefert ISO-String mit 'Z' am Ende
+            return new Date(str);
+        }
+
+        function dauerAnzeigen(sekunden) {
+            if (!sekunden || sekunden < 0) return '0 Min';
+            const min = Math.floor(sekunden / 60);
+            if (min < 60) return `${min} Min`;
+            const std = Math.floor(min / 60);
+            const rest = min % 60;
+            return `${std}h ${rest} Min`;
+        }
+
         // ===== DATEN LADEN =====
         async function loadData() {
             try {
@@ -105,6 +126,19 @@
                 };
                 const s = statusMap[a.status] || statusMap[0];
 
+                // Dauer berechnen
+                let dauerText = '';
+                if (a.status === 1 && a.startzeit) {
+                    const start = parseSupabaseZeit(a.startzeit);
+                    if (start) {
+                        const jetzt = new Date();
+                        const diff = Math.floor((jetzt - start) / 1000);
+                        dauerText = ` (${dauerAnzeigen(diff)})`;
+                    }
+                } else if (a.status === 2 && a.dauer) {
+                    dauerText = ` (${dauerAnzeigen(a.dauer)})`;
+                }
+
                 let actionBtn = '';
                 if (a.status === 0) {
                     actionBtn = `<button class="btn-green btn-sm" onclick="startJob(${a.id})">▶️ STARTEN</button>`;
@@ -119,7 +153,7 @@
                         <div class="info">
                             <div class="name">${a.kunde}</div>
                             <div class="street">${a.strasse || ''}</div>
-                            <div class="status" style="color:${s.color}">${s.text}</div>
+                            <div class="status" style="color:${s.color}">${s.text}${dauerText}</div>
                         </div>
                         <div class="flex">
                             ${actionBtn}
@@ -165,13 +199,26 @@
         // ===== STARTEN =====
         async function startJob(id) {
             try {
-                await fetch(`${SUPABASE_URL}/rest/v1/auftraege?id=eq.${id}`, {
+                const startzeit = jetztISO();
+                console.log(`▶️ Starte Auftrag ${id} um ${startzeit}`);
+                
+                const res = await fetch(`${SUPABASE_URL}/rest/v1/auftraege?id=eq.${id}`, {
                     method: 'PATCH',
                     headers,
-                    body: JSON.stringify({ status: 1, startzeit: new Date().toISOString() })
+                    body: JSON.stringify({ 
+                        status: 1, 
+                        startzeit: startzeit,
+                        endzeit: null,
+                        dauer: 0
+                    })
                 });
-                setStatus('▶️ Auftrag gestartet', 'green');
-                await loadData();
+                
+                if (res.ok) {
+                    setStatus('▶️ Auftrag gestartet', 'green');
+                    await loadData();
+                } else {
+                    setStatus(`❌ Fehler beim Starten: ${res.status}`, 'red');
+                }
             } catch (e) {
                 setStatus(`❌ Fehler: ${e.message}`, 'red');
             }
@@ -180,19 +227,41 @@
         // ===== STOPPEN =====
         async function stopJob(id) {
             try {
+                // Erst den aktuellen Auftrag laden
                 const res = await fetch(`${SUPABASE_URL}/rest/v1/auftraege?id=eq.${id}`, { headers });
                 const data = await res.json();
+                
                 if (data.length && data[0].startzeit) {
-                    const start = new Date(data[0].startzeit);
+                    const start = parseSupabaseZeit(data[0].startzeit);
+                    if (!start) {
+                        setStatus('❌ Keine gültige Startzeit', 'red');
+                        return;
+                    }
+                    
                     const end = new Date();
                     const dauer = Math.floor((end - start) / 1000);
-                    await fetch(`${SUPABASE_URL}/rest/v1/auftraege?id=eq.${id}`, {
+                    const endzeit = jetztISO();
+                    
+                    console.log(`⏹ Stoppe Auftrag ${id}, Dauer: ${dauer}s`);
+                    
+                    const updateRes = await fetch(`${SUPABASE_URL}/rest/v1/auftraege?id=eq.${id}`, {
                         method: 'PATCH',
                         headers,
-                        body: JSON.stringify({ status: 2, endzeit: end.toISOString(), dauer })
+                        body: JSON.stringify({ 
+                            status: 2, 
+                            endzeit: endzeit, 
+                            dauer: dauer 
+                        })
                     });
-                    setStatus(`⏹ Auftrag gestoppt (${Math.floor(dauer/60)} Min)`, 'orange');
-                    await loadData();
+                    
+                    if (updateRes.ok) {
+                        setStatus(`⏹ Auftrag gestoppt (${dauerAnzeigen(dauer)})`, 'orange');
+                        await loadData();
+                    } else {
+                        setStatus(`❌ Fehler beim Stoppen: ${updateRes.status}`, 'red');
+                    }
+                } else {
+                    setStatus('❌ Keine Startzeit gefunden', 'red');
                 }
             } catch (e) {
                 setStatus(`❌ Fehler: ${e.message}`, 'red');
