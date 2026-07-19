@@ -161,7 +161,6 @@
             justify-content: center;
         }
 
-        /* NEU: vertikale Button-Gruppe in der Entry */
         .entry-actions {
             display: flex;
             flex-direction: column;
@@ -230,7 +229,6 @@
             margin: 16px 0;
         }
 
-        /* Scrollbar */
         ::-webkit-scrollbar {
             width: 6px;
         }
@@ -245,7 +243,6 @@
             background: #3b4654;
         }
 
-        /* Badge für laufende Aufträge */
         .badge-running {
             background: #dc2626;
             color: white;
@@ -259,16 +256,10 @@
         }
 
         @keyframes pulse {
-            0%,
-            100% {
-                opacity: 1;
-            }
-            50% {
-                opacity: 0.5;
-            }
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
         }
 
-        /* LIVE-Badge in der vertikalen Gruppe zentrieren */
         .entry-actions .badge-running {
             text-align: center;
         }
@@ -341,13 +332,30 @@
             try { return new Date(str); } catch { return null; }
         }
 
+        // ===== NEUE DAUER-FUNKTION mit 15-Minuten-Rundung =====
         function dauerAnzeigen(sek) {
             if (!sek || sek < 0) return '0 Min';
-            const min = Math.floor(sek / 60);
-            if (min < 60) return `${min} Min`;
-            const std = Math.floor(min / 60);
-            const rest = min % 60;
-            return rest === 0 ? `${std}h` : `${std}h ${rest} Min`;
+
+            // 1. Sekunden in Minuten umrechnen
+            let min = sek / 60;
+
+            // 2. Auf die nächste Viertelstunde AUFRUNDEN
+            // 15 Minuten = 0.25 Stunden
+            const viertelStunden = Math.ceil(min / 15);
+            const gerundeteMinuten = viertelStunden * 15;
+
+            // 3. In Stunden und Minuten umrechnen
+            const std = Math.floor(gerundeteMinuten / 60);
+            const restMin = gerundeteMinuten % 60;
+
+            // 4. Formatieren
+            if (std === 0) {
+                return `${restMin} Min`;
+            } else if (restMin === 0) {
+                return `${std} Std`;
+            } else {
+                return `${std} Std ${restMin} Min`;
+            }
         }
 
         function statusColor(status) {
