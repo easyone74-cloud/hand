@@ -317,7 +317,6 @@
             text-align: center;
         }
 
-        /* Kamera-View */
         .camera-card video {
             width: 100%;
             max-height: 400px;
@@ -647,7 +646,17 @@
                 return;
             }
 
-            navigator.mediaDevices.getUserMedia({ video: true })
+            // ===== RÜCK-KAMERA ANFORDERN =====
+            const constraints = {
+                video: {
+                    facingMode: { ideal: 'environment' },
+                    width: { ideal: 1920 },
+                    height: { ideal: 1080 }
+                },
+                audio: false
+            };
+
+            navigator.mediaDevices.getUserMedia(constraints)
                 .then(stream => {
                     const video = document.createElement('video');
                     video.srcObject = stream;
@@ -656,6 +665,7 @@
                     video.style.maxHeight = '400px';
                     video.style.borderRadius = '12px';
                     video.style.marginBottom = '10px';
+                    video.style.transform = 'scaleX(-1)';
 
                     const captureBtn = document.createElement('button');
                     captureBtn.textContent = '📸 Foto aufnehmen';
@@ -701,7 +711,68 @@
                     };
                 })
                 .catch(err => {
-                    setStatus(`❌ Kamera-Fehler: ${err.message}`, '#ef4444');
+                    // Fallback: Wenn "environment" nicht verfügbar, versuche Standard-Kamera
+                    if (err.message.includes('facingMode') || err.message.includes('constraints')) {
+                        setStatus('📷 Versuche Standard-Kamera...', '#60a5fa');
+                        navigator.mediaDevices.getUserMedia({ video: true })
+                            .then(stream => {
+                                const video = document.createElement('video');
+                                video.srcObject = stream;
+                                video.autoplay = true;
+                                video.style.width = '100%';
+                                video.style.maxHeight = '400px';
+                                video.style.borderRadius = '12px';
+                                video.style.marginBottom = '10px';
+
+                                const captureBtn = document.createElement('button');
+                                captureBtn.textContent = '📸 Foto aufnehmen';
+                                captureBtn.className = 'btn btn-blue';
+                                captureBtn.style.width = '100%';
+
+                                const cancelBtn = document.createElement('button');
+                                cancelBtn.textContent = '❌ Abbrechen';
+                                cancelBtn.className = 'btn btn-ghost';
+                                cancelBtn.style.width = '100%';
+                                cancelBtn.style.marginTop = '8px';
+
+                                const container = document.getElementById('pullContainer');
+                                const existingCard = container.querySelector('.camera-card');
+                                if (existingCard) existingCard.remove();
+
+                                const card = document.createElement('div');
+                                card.className = 'card camera-card';
+                                card.appendChild(video);
+                                card.appendChild(captureBtn);
+                                card.appendChild(cancelBtn);
+                                container.prepend(card);
+
+                                captureBtn.onclick = function() {
+                                    const canvas = document.createElement('canvas');
+                                    canvas.width = video.videoWidth;
+                                    canvas.height = video.videoHeight;
+                                    const ctx = canvas.getContext('2d');
+                                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                                    const imageData = canvas.toDataURL('image/png');
+
+                                    stream.getTracks().forEach(track => track.stop());
+                                    card.remove();
+
+                                    setStatus('📷 Analysiere Bild...', '#60a5fa');
+                                    performOCR(imageData);
+                                };
+
+                                cancelBtn.onclick = function() {
+                                    stream.getTracks().forEach(track => track.stop());
+                                    card.remove();
+                                    setStatus('📷 Abgebrochen', '#f59e0b');
+                                };
+                            })
+                            .catch(fallbackErr => {
+                                setStatus(`❌ Kamera-Fehler: ${fallbackErr.message}`, '#ef4444');
+                            });
+                    } else {
+                        setStatus(`❌ Kamera-Fehler: ${err.message}`, '#ef4444');
+                    }
                 });
         }
 
