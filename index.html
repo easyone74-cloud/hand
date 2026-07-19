@@ -70,16 +70,33 @@
 
         let auftraege = [];
 
-        // ===== HILFSFUNKTIONEN =====
-        function jetztISO() {
-            // UTC-Zeit im ISO-Format ohne Millisekunden
-            return new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
+        // ===== HILFSFUNKTIONEN (mit lokaler Zeit) =====
+        function jetztLokalISO() {
+            // Lokale Zeit im ISO-Format (mit Zeitzonen-Offset)
+            const now = new Date();
+            const offset = now.getTimezoneOffset();
+            const offsetHours = Math.abs(Math.floor(offset / 60));
+            const offsetMinutes = Math.abs(offset % 60);
+            const sign = offset > 0 ? '-' : '+';
+            const timezone = `${sign}${String(offsetHours).padStart(2, '0')}:${String(offsetMinutes).padStart(2, '0')}`;
+            
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+            
+            return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}${timezone}`;
         }
 
-        function parseSupabaseZeit(str) {
+        function parseDatum(str) {
             if (!str) return null;
-            // Supabase liefert ISO-String mit 'Z' am Ende
-            return new Date(str);
+            try {
+                return new Date(str);
+            } catch {
+                return null;
+            }
         }
 
         function dauerAnzeigen(sekunden) {
@@ -88,6 +105,7 @@
             if (min < 60) return `${min} Min`;
             const std = Math.floor(min / 60);
             const rest = min % 60;
+            if (rest === 0) return `${std}h`;
             return `${std}h ${rest} Min`;
         }
 
@@ -126,14 +144,17 @@
                 };
                 const s = statusMap[a.status] || statusMap[0];
 
-                // Dauer berechnen
                 let dauerText = '';
                 if (a.status === 1 && a.startzeit) {
-                    const start = parseSupabaseZeit(a.startzeit);
+                    const start = parseDatum(a.startzeit);
                     if (start) {
                         const jetzt = new Date();
                         const diff = Math.floor((jetzt - start) / 1000);
-                        dauerText = ` (${dauerAnzeigen(diff)})`;
+                        if (diff > 0) {
+                            dauerText = ` (${dauerAnzeigen(diff)})`;
+                        } else {
+                            dauerText = ' (0 Min)';
+                        }
                     }
                 } else if (a.status === 2 && a.dauer) {
                     dauerText = ` (${dauerAnzeigen(a.dauer)})`;
@@ -199,7 +220,7 @@
         // ===== STARTEN =====
         async function startJob(id) {
             try {
-                const startzeit = jetztISO();
+                const startzeit = jetztLokalISO();
                 console.log(`▶️ Starte Auftrag ${id} um ${startzeit}`);
                 
                 const res = await fetch(`${SUPABASE_URL}/rest/v1/auftraege?id=eq.${id}`, {
@@ -232,7 +253,7 @@
                 const data = await res.json();
                 
                 if (data.length && data[0].startzeit) {
-                    const start = parseSupabaseZeit(data[0].startzeit);
+                    const start = parseDatum(data[0].startzeit);
                     if (!start) {
                         setStatus('❌ Keine gültige Startzeit', 'red');
                         return;
@@ -240,9 +261,10 @@
                     
                     const end = new Date();
                     const dauer = Math.floor((end - start) / 1000);
-                    const endzeit = jetztISO();
+                    const endzeit = jetztLokalISO();
                     
                     console.log(`⏹ Stoppe Auftrag ${id}, Dauer: ${dauer}s`);
+                    console.log(`Start: ${data[0].startzeit}, Ende: ${endzeit}`);
                     
                     const updateRes = await fetch(`${SUPABASE_URL}/rest/v1/auftraege?id=eq.${id}`, {
                         method: 'PATCH',
