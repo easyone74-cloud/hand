@@ -5,14 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Service Zeit</title>
 
-    <!-- ===== PWA META-TAGS ===== -->
     <link rel="manifest" href="manifest.json" />
     <meta name="theme-color" content="#0b0e11" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black" />
     <link rel="apple-touch-icon" href="/icon-192.png" />
 
-    <!-- ===== SERVICE WORKER ===== -->
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
@@ -28,313 +26,104 @@
     </script>
 
     <style>
-        * {
-            box-sizing: border-box;
-            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-            margin: 0;
-            padding: 0;
-        }
+        * { box-sizing: border-box; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; }
+        body { background: #0b0e11; padding: 20px; max-width: 600px; margin: 0 auto; color: #e8edf3; min-height: 100vh; }
 
-        body {
-            background: #0b0e11;
-            padding: 20px;
-            max-width: 600px;
-            margin: 0 auto;
-            color: #e8edf3;
-            min-height: 100vh;
-        }
+        .card { background: #1a1f26; padding: 20px; border-radius: 16px; margin-bottom: 16px; box-shadow: 0 4px 16px rgba(0,0,0,0.5); border: 1px solid #2a3038; }
+        .card-title { font-size: 24px; font-weight: 700; background: linear-gradient(135deg, #60a5fa, #a78bfa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-align: center; }
+        .card-subtitle { text-align: center; font-size: 13px; color: #64748b; margin-top: 4px; letter-spacing: 0.3px; }
 
-        .card {
-            background: #1a1f26;
-            padding: 20px;
-            border-radius: 16px;
-            margin-bottom: 16px;
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
-            border: 1px solid #2a3038;
-            transition: all 0.2s;
-        }
+        .status-bar { background: #11161e; border-radius: 10px; padding: 10px 16px; text-align: center; font-size: 15px; color: #94a3b8; border: 1px solid #1e293b; }
+        .status-bar .status-text { font-weight: 500; }
 
-        .card-title {
-            font-size: 24px;
-            font-weight: 700;
-            background: linear-gradient(135deg, #60a5fa, #a78bfa);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            text-align: center;
-        }
+        .pull-container { position: relative; overflow: hidden; }
+        .pull-indicator { text-align: center; color: #64748b; font-size: 13px; padding: 8px 0; transform: translateY(-40px); transition: transform 0.2s; }
+        .pull-indicator.active { transform: translateY(0); }
+        .pull-indicator .spinner { display: inline-block; width: 20px; height: 20px; border: 2px solid #2a3038; border-top-color: #60a5fa; border-radius: 50%; animation: spin 0.8s linear infinite; margin-right: 8px; vertical-align: middle; }
+        @keyframes spin { to { transform: rotate(360deg); } }
 
-        .card-subtitle {
-            text-align: center;
-            font-size: 13px;
-            color: #64748b;
-            margin-top: 4px;
-            letter-spacing: 0.3px;
-        }
+        input { width: 100%; padding: 14px 16px; background: #11161e; border: 1px solid #2a3038; border-radius: 10px; color: #e8edf3; font-size: 16px; margin-bottom: 10px; transition: border 0.2s; }
+        input:focus { outline: none; border-color: #60a5fa; box-shadow: 0 0 0 3px rgba(96,165,250,0.2); }
+        input::placeholder { color: #64748b; }
 
-        .status-bar {
-            background: #11161e;
-            border-radius: 10px;
-            padding: 10px 16px;
-            text-align: center;
-            font-size: 15px;
-            color: #94a3b8;
-            border: 1px solid #1e293b;
-        }
+        .btn { padding: 8px 14px; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 4px; }
+        .btn:active { transform: scale(0.95); }
 
-        .status-bar .status-text {
-            font-weight: 500;
-        }
+        .btn-blue { background: #2563eb; color: white; }
+        .btn-blue:hover { background: #3b82f6; }
 
-        .pull-container {
-            position: relative;
-            overflow: hidden;
-        }
+        .btn-green { background: #16a34a; color: white; }
+        .btn-green:hover { background: #22c55e; }
 
-        .pull-indicator {
-            text-align: center;
-            color: #64748b;
-            font-size: 13px;
-            padding: 8px 0;
-            transform: translateY(-40px);
-            transition: transform 0.2s;
-        }
+        .btn-red { background: #dc2626; color: white; }
+        .btn-red:hover { background: #ef4444; }
 
-        .pull-indicator.active {
-            transform: translateY(0);
-        }
+        .btn-orange { background: #d97706; color: white; }
+        .btn-orange:hover { background: #f59e0b; }
 
-        .pull-indicator .spinner {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 2px solid #2a3038;
-            border-top-color: #60a5fa;
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-            margin-right: 8px;
-            vertical-align: middle;
-        }
+        .btn-ghost { background: transparent; color: #94a3b8; border: 1px solid #2a3038; }
+        .btn-ghost:hover { background: #1e293b; }
 
-        @keyframes spin {
-            to {
-                transform: rotate(360deg);
-            }
-        }
+        .btn-sm { padding: 4px 8px; font-size: 11px; border-radius: 6px; }
 
-        input {
-            width: 100%;
-            padding: 14px 16px;
-            background: #11161e;
-            border: 1px solid #2a3038;
-            border-radius: 10px;
-            color: #e8edf3;
-            font-size: 16px;
-            margin-bottom: 10px;
-            transition: border 0.2s;
-        }
+        .row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
 
-        input:focus {
-            outline: none;
-            border-color: #60a5fa;
-            box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.2);
-        }
+        .entry-actions { display: flex; flex-direction: column; gap: 4px; align-items: stretch; flex-shrink: 0; margin-left: 8px; min-width: 70px; }
 
-        input::placeholder {
-            color: #64748b;
-        }
+        .entry { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; background: #11161e; border-radius: 10px; margin-bottom: 6px; border: 1px solid #1e293b; transition: border 0.2s; }
+        .entry:hover { border-color: #334155; }
 
-        .btn {
-            padding: 12px 20px;
-            border: none;
-            border-radius: 10px;
-            font-size: 15px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
-            flex: 1;
-        }
+        .entry .info { flex: 1; min-width: 0; }
+        .entry .name { font-size: 16px; font-weight: 600; color: #f1f5f9; }
+        .entry .street { font-size: 13px; color: #94a3b8; margin-top: 1px; }
+        .entry .status { font-size: 12px; font-weight: 500; margin-top: 2px; }
 
-        .btn:active {
-            transform: scale(0.96);
-        }
+        .text-muted { color: #64748b; }
+        .text-center { text-align: center; }
 
-        .btn-blue {
-            background: #2563eb;
-            color: white;
-        }
-        .btn-blue:hover {
-            background: #3b82f6;
-        }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #0b0e11; }
+        ::-webkit-scrollbar-thumb { background: #2a3038; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #3b4654; }
 
-        .btn-green {
-            background: #16a34a;
-            color: white;
-        }
-        .btn-green:hover {
-            background: #22c55e;
-        }
+        .badge-running { background: #dc2626; color: white; padding: 2px 8px; border-radius: 20px; font-size: 10px; font-weight: 600; animation: pulse 1.5s infinite; display: inline-block; text-align: center; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
 
-        .btn-red {
-            background: #dc2626;
-            color: white;
-        }
-        .btn-red:hover {
-            background: #ef4444;
-        }
+        .entry-actions .badge-running { text-align: center; }
 
-        .btn-sm {
-            padding: 6px 14px;
-            font-size: 13px;
-            border-radius: 8px;
-            width: 100%;
-        }
-
-        .btn-ghost {
-            background: transparent;
-            color: #94a3b8;
-            border: 1px solid #2a3038;
-        }
-        .btn-ghost:hover {
-            background: #1e293b;
-        }
-
-        .row {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-
-        .entry-actions {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-            align-items: stretch;
-            flex-shrink: 0;
-            margin-left: 12px;
-            min-width: 90px;
-        }
-
-        .entry {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 14px 16px;
-            background: #11161e;
-            border-radius: 12px;
-            margin-bottom: 8px;
-            border: 1px solid #1e293b;
-            transition: border 0.2s;
-        }
-
-        .entry:hover {
-            border-color: #334155;
-        }
-
-        .entry .info {
-            flex: 1;
-            min-width: 0;
-        }
-
-        .entry .name {
-            font-size: 17px;
-            font-weight: 600;
-            color: #f1f5f9;
-        }
-
-        .entry .street {
-            font-size: 14px;
-            color: #94a3b8;
-            margin-top: 2px;
-        }
-
-        .entry .status {
-            font-size: 13px;
-            font-weight: 500;
-            margin-top: 4px;
-        }
-
-        .text-muted {
-            color: #64748b;
-        }
-
-        .text-center {
-            text-align: center;
-        }
-
-        ::-webkit-scrollbar {
-            width: 6px;
-        }
-        ::-webkit-scrollbar-track {
-            background: #0b0e11;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #2a3038;
-            border-radius: 3px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #3b4654;
-        }
-
-        .badge-running {
-            background: #dc2626;
-            color: white;
-            padding: 2px 10px;
-            border-radius: 20px;
-            font-size: 11px;
-            font-weight: 600;
-            animation: pulse 1.5s infinite;
-            display: inline-block;
-            text-align: center;
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
-
-        .entry-actions .badge-running {
-            text-align: center;
-        }
+        .move-buttons { display: flex; gap: 2px; }
+        .move-buttons .btn { padding: 2px 6px; font-size: 14px; }
     </style>
 </head>
 <body>
 
-    <!-- TITEL -->
     <div class="card">
         <div class="card-title">🔧 Service Zeit 🔧</div>
         <div class="card-subtitle">© 2026 H. Neuhaus</div>
     </div>
 
-    <!-- STATUS -->
     <div class="status-bar">
         <span id="status" class="status-text">📡 Lade Daten...</span>
     </div>
 
-    <!-- PULL-TO-REFRESH CONTAINER -->
     <div class="pull-container" id="pullContainer">
         <div class="pull-indicator" id="pullIndicator">
             <span class="spinner"></span> Aktualisiere...
         </div>
 
-        <!-- EINGABE -->
         <div class="card">
             <input id="inputName" type="text" placeholder="👤 Kunde / Firma" />
             <input id="inputStreet" type="text" placeholder="📍 Straße / Ort" />
             <div class="row">
-                <button class="btn btn-blue" onclick="save()">➕ NEUER AUFTRAG</button>
-                <button class="btn btn-red" onclick="deleteDay()">🗑️ TAG LÖSCHEN</button>
+                <button class="btn btn-blue" onclick="save()" style="flex:1;">➕ NEUER AUFTRAG</button>
+                <button class="btn btn-red" onclick="deleteDay()" style="flex:1;">🗑️ TAG LÖSCHEN</button>
             </div>
         </div>
 
-        <!-- LISTE -->
         <div class="card">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-                <h3 style="font-size:18px; font-weight:600; color:#e8edf3;">📋 Aufträge</h3>
-                <span id="countBadge" style="background:#1e293b; padding:4px 14px; border-radius:20px; font-size:13px; color:#94a3b8;">0</span>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                <h3 style="font-size:17px; font-weight:600; color:#e8edf3;">📋 Aufträge</h3>
+                <span id="countBadge" style="background:#1e293b; padding:4px 12px; border-radius:20px; font-size:12px; color:#94a3b8;">0</span>
             </div>
             <div id="entries"></div>
         </div>
@@ -387,11 +176,11 @@
         }
 
         function statusColor(status) {
-            return status === 0 ? '#94a3b8' : status === 1 ? '#ef4444' : '#22c55e';
+            return status === 0 ? '#94a3b8' : status === 1 ? '#ef4444' : status === 3 ? '#f59e0b' : '#22c55e';
         }
 
         function statusText(status) {
-            return status === 0 ? '⏸ Bereit' : status === 1 ? '🔴 Läuft' : '✅ Fertig';
+            return status === 0 ? '⏸ Bereit' : status === 1 ? '🔴 Läuft' : status === 3 ? '⏸ Pausiert' : '✅ Fertig';
         }
 
         // ===== AUTO-REFRESH =====
@@ -438,6 +227,7 @@
             } catch (e) {}
         }
 
+        // ===== LISTE ANZEIGEN (mit Pause & Verschieben) =====
         function renderList() {
             const container = document.getElementById('entries');
             const heute = new Date().toISOString().slice(0, 10);
@@ -450,36 +240,69 @@
                 return;
             }
 
-            container.innerHTML = rows.map(a => {
+            container.innerHTML = rows.map((a, index) => {
                 let dauerText = '';
+                let aktiveZeit = a.dauer || 0;
+
+                // Bei laufendem Auftrag: aktuelle Dauer anzeigen (inkl. Pausen)
                 if (a.status === 1 && a.startzeit) {
                     const start = parseDatum(a.startzeit);
                     if (start) {
-                        const diff = Math.floor((new Date() - start) / 1000);
-                        dauerText = ` (${dauerAnzeigen(diff)})`;
+                        const jetzt = new Date();
+                        const diff = Math.floor((jetzt - start) / 1000);
+                        // Pausen abziehen
+                        const pausen = a.pausen_gesamt || 0;
+                        const netto = Math.max(0, diff - pausen);
+                        dauerText = ` (${dauerAnzeigen(netto)})`;
                     }
                 } else if (a.status === 2 && a.dauer) {
                     dauerText = ` (${dauerAnzeigen(a.dauer)})`;
+                } else if (a.status === 3 && a.startzeit && a.pausen_gesamt) {
+                    // Pausiert: Zeige bisherige Netto-Zeit
+                    const start = parseDatum(a.startzeit);
+                    if (start) {
+                        const jetzt = new Date();
+                        const diff = Math.floor((jetzt - start) / 1000);
+                        const pausen = a.pausen_gesamt || 0;
+                        const netto = Math.max(0, diff - pausen);
+                        dauerText = ` (${dauerAnzeigen(netto)})`;
+                    }
                 }
 
                 let actionsHtml = '';
+
+                // Status 0: Bereit → STARTEN
                 if (a.status === 0) {
                     actionsHtml = `
-                        <button class="btn btn-green btn-sm" onclick="startJob(${a.id})">▶️ STARTEN</button>
-                        <button class="btn btn-ghost btn-sm" onclick="deleteJob(${a.id})" style="color:#94a3b8;">🗑️ LÖSCHEN</button>
-                    `;
-                } else if (a.status === 1) {
-                    actionsHtml = `
-                        <span class="badge-running">LIVE</span>
-                        <button class="btn btn-red btn-sm" onclick="stopJob(${a.id})">⏹ STOPPEN</button>
-                        <button class="btn btn-ghost btn-sm" onclick="deleteJob(${a.id})" style="color:#94a3b8;">🗑️ LÖSCHEN</button>
-                    `;
-                } else {
-                    actionsHtml = `
-                        <span style="color:#22c55e; font-weight:600; text-align:center;">✔️ Erledigt</span>
-                        <button class="btn btn-ghost btn-sm" onclick="deleteJob(${a.id})" style="color:#94a3b8;">🗑️ LÖSCHEN</button>
+                        <button class="btn btn-green btn-sm" onclick="startJob(${a.id})">▶️ START</button>
                     `;
                 }
+                // Status 1: Läuft → PAUSE + STOPPEN
+                else if (a.status === 1) {
+                    actionsHtml = `
+                        <button class="btn btn-orange btn-sm" onclick="pauseJob(${a.id})">⏸ PAUSE</button>
+                        <button class="btn btn-red btn-sm" onclick="stopJob(${a.id})">⏹ STOP</button>
+                    `;
+                }
+                // Status 3: Pausiert → WEITER + STOPPEN
+                else if (a.status === 3) {
+                    actionsHtml = `
+                        <button class="btn btn-green btn-sm" onclick="resumeJob(${a.id})">▶️ WEITER</button>
+                        <button class="btn btn-red btn-sm" onclick="stopJob(${a.id})">⏹ STOP</button>
+                    `;
+                }
+                // Status 2: Fertig → nur Anzeige
+                else {
+                    actionsHtml = `<span style="color:#22c55e; font-weight:600; font-size:12px;">✔️ Erledigt</span>`;
+                }
+
+                // Verschieben-Buttons
+                const moveButtons = `
+                    <div class="move-buttons">
+                        <button class="btn btn-ghost btn-sm" onclick="moveJob(${a.id}, -1)" ${index === 0 ? 'disabled' : ''}>⬆</button>
+                        <button class="btn btn-ghost btn-sm" onclick="moveJob(${a.id}, 1)" ${index === rows.length - 1 ? 'disabled' : ''}>⬇</button>
+                    </div>
+                `;
 
                 return `
                     <div class="entry">
@@ -490,8 +313,12 @@
                                 ${statusText(a.status)}${dauerText}
                             </div>
                         </div>
-                        <div class="entry-actions">
-                            ${actionsHtml}
+                        <div style="display:flex; flex-direction:column; align-items:flex-end; gap:4px;">
+                            <div class="entry-actions" style="flex-direction:row; min-width:unset;">
+                                ${actionsHtml}
+                                <button class="btn btn-ghost btn-sm" onclick="deleteJob(${a.id})" style="color:#94a3b8;">🗑️</button>
+                            </div>
+                            ${moveButtons}
                         </div>
                     </div>
                 `;
@@ -508,7 +335,8 @@
                 kunde: name,
                 strasse: street || '',
                 status: 0,
-                tag: new Date().toISOString().slice(0, 10)
+                tag: new Date().toISOString().slice(0, 10),
+                pausen_gesamt: 0
             };
 
             try {
@@ -530,13 +358,20 @@
             }
         }
 
+        // ===== STARTEN =====
         async function startJob(id) {
             try {
                 const startzeit = jetztLokalISO();
                 const res = await fetch(`${SUPABASE_URL}/rest/v1/auftraege?id=eq.${id}`, {
                     method: 'PATCH',
                     headers,
-                    body: JSON.stringify({ status: 1, startzeit, endzeit: null, dauer: 0 })
+                    body: JSON.stringify({ 
+                        status: 1, 
+                        startzeit, 
+                        endzeit: null, 
+                        dauer: 0,
+                        pausen_gesamt: 0
+                    })
                 });
                 if (res.ok) {
                     setStatus('▶️ Auftrag gestartet', '#22c55e');
@@ -549,24 +384,92 @@
             }
         }
 
+        // ===== PAUSIEREN =====
+        async function pauseJob(id) {
+            try {
+                // Aktuellen Auftrag laden
+                const res = await fetch(`${SUPABASE_URL}/rest/v1/auftraege?id=eq.${id}`, { headers });
+                const data = await res.json();
+                if (data.length && data[0].startzeit) {
+                    const start = parseDatum(data[0].startzeit);
+                    const jetzt = new Date();
+                    const diff = Math.floor((jetzt - start) / 1000);
+                    // Bisherige Pausen + aktuelle Differenz
+                    const altePausen = data[0].pausen_gesamt || 0;
+                    const neuePausen = altePausen + diff;
+
+                    const updateRes = await fetch(`${SUPABASE_URL}/rest/v1/auftraege?id=eq.${id}`, {
+                        method: 'PATCH',
+                        headers,
+                        body: JSON.stringify({ 
+                            status: 3,
+                            pausen_gesamt: neuePausen,
+                            startzeit: jetztLokalISO() // Neuen Startzeitpunkt setzen
+                        })
+                    });
+                    if (updateRes.ok) {
+                        setStatus('⏸ Auftrag pausiert', '#f59e0b');
+                        await loadData();
+                    } else {
+                        setStatus(`❌ Fehler beim Pausieren: ${updateRes.status}`, '#ef4444');
+                    }
+                } else {
+                    setStatus('❌ Keine Startzeit gefunden', '#ef4444');
+                }
+            } catch (e) {
+                setStatus(`❌ Fehler: ${e.message}`, '#ef4444');
+            }
+        }
+
+        // ===== WEITER (Resume) =====
+        async function resumeJob(id) {
+            try {
+                // Aktuellen Auftrag laden
+                const res = await fetch(`${SUPABASE_URL}/rest/v1/auftraege?id=eq.${id}`, { headers });
+                const data = await res.json();
+                if (data.length) {
+                    // Neue Startzeit setzen (für die nächste Phase)
+                    const updateRes = await fetch(`${SUPABASE_URL}/rest/v1/auftraege?id=eq.${id}`, {
+                        method: 'PATCH',
+                        headers,
+                        body: JSON.stringify({ 
+                            status: 1,
+                            startzeit: jetztLokalISO()
+                        })
+                    });
+                    if (updateRes.ok) {
+                        setStatus('▶️ Auftrag fortgesetzt', '#22c55e');
+                        await loadData();
+                    } else {
+                        setStatus(`❌ Fehler beim Fortsetzen: ${updateRes.status}`, '#ef4444');
+                    }
+                }
+            } catch (e) {
+                setStatus(`❌ Fehler: ${e.message}`, '#ef4444');
+            }
+        }
+
+        // ===== STOPPEN =====
         async function stopJob(id) {
             try {
                 const res = await fetch(`${SUPABASE_URL}/rest/v1/auftraege?id=eq.${id}`, { headers });
                 const data = await res.json();
                 if (data.length && data[0].startzeit) {
                     const start = parseDatum(data[0].startzeit);
-                    if (!start) { setStatus('❌ Keine gültige Startzeit', '#ef4444'); return; }
                     const end = new Date();
-                    const dauer = Math.floor((end - start) / 1000);
+                    // Gesamtzeit minus Pausen
+                    const gesamt = Math.floor((end - start) / 1000);
+                    const pausen = data[0].pausen_gesamt || 0;
+                    const netto = Math.max(0, gesamt - pausen);
                     const endzeit = jetztLokalISO();
 
                     const updateRes = await fetch(`${SUPABASE_URL}/rest/v1/auftraege?id=eq.${id}`, {
                         method: 'PATCH',
                         headers,
-                        body: JSON.stringify({ status: 2, endzeit, dauer })
+                        body: JSON.stringify({ status: 2, endzeit, dauer: netto })
                     });
                     if (updateRes.ok) {
-                        setStatus(`⏹ Auftrag gestoppt (${dauerAnzeigen(dauer)})`, '#f59e0b');
+                        setStatus(`⏹ Auftrag gestoppt (${dauerAnzeigen(netto)})`, '#f59e0b');
                         await loadData();
                     } else {
                         setStatus(`❌ Fehler beim Stoppen: ${updateRes.status}`, '#ef4444');
@@ -579,6 +482,42 @@
             }
         }
 
+        // ===== VERSCHIEBEN =====
+        async function moveJob(id, direction) {
+            try {
+                const heute = new Date().toISOString().slice(0, 10);
+                const todayJobs = auftraege.filter(a => a.tag === heute);
+                const currentIndex = todayJobs.findIndex(a => a.id === id);
+                if (currentIndex === -1) return;
+                const newIndex = currentIndex + direction;
+                if (newIndex < 0 || newIndex >= todayJobs.length) return;
+
+                // IDs der beiden zu tauschenden Aufträge
+                const currentJob = todayJobs[currentIndex];
+                const otherJob = todayJobs[newIndex];
+
+                // Temporäre Reihenfolge speichern – wir tauschen die erstellt_am Werte
+                const temp = currentJob.erstellt_am;
+                const update1 = fetch(`${SUPABASE_URL}/rest/v1/auftraege?id=eq.${currentJob.id}`, {
+                    method: 'PATCH',
+                    headers,
+                    body: JSON.stringify({ erstellt_am: otherJob.erstellt_am })
+                });
+                const update2 = fetch(`${SUPABASE_URL}/rest/v1/auftraege?id=eq.${otherJob.id}`, {
+                    method: 'PATCH',
+                    headers,
+                    body: JSON.stringify({ erstellt_am: temp })
+                });
+
+                await Promise.all([update1, update2]);
+                setStatus('⬆⬇ Reihenfolge geändert', '#60a5fa');
+                await loadData();
+            } catch (e) {
+                setStatus(`❌ Fehler beim Verschieben: ${e.message}`, '#ef4444');
+            }
+        }
+
+        // ===== LÖSCHEN =====
         async function deleteJob(id) {
             if (!confirm('Diesen Auftrag wirklich löschen?')) return;
             try {
