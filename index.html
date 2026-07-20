@@ -227,7 +227,7 @@
             } catch (e) {}
         }
 
-        // ===== LISTE ANZEIGEN (mit Pause & Verschieben) =====
+        // ===== LISTE ANZEIGEN =====
         function renderList() {
             const container = document.getElementById('entries');
             const heute = new Date().toISOString().slice(0, 10);
@@ -244,13 +244,11 @@
                 let dauerText = '';
                 let aktiveZeit = a.dauer || 0;
 
-                // Bei laufendem Auftrag: aktuelle Dauer anzeigen (inkl. Pausen)
                 if (a.status === 1 && a.startzeit) {
                     const start = parseDatum(a.startzeit);
                     if (start) {
                         const jetzt = new Date();
                         const diff = Math.floor((jetzt - start) / 1000);
-                        // Pausen abziehen
                         const pausen = a.pausen_gesamt || 0;
                         const netto = Math.max(0, diff - pausen);
                         dauerText = ` (${dauerAnzeigen(netto)})`;
@@ -258,7 +256,6 @@
                 } else if (a.status === 2 && a.dauer) {
                     dauerText = ` (${dauerAnzeigen(a.dauer)})`;
                 } else if (a.status === 3 && a.startzeit && a.pausen_gesamt) {
-                    // Pausiert: Zeige bisherige Netto-Zeit
                     const start = parseDatum(a.startzeit);
                     if (start) {
                         const jetzt = new Date();
@@ -271,32 +268,27 @@
 
                 let actionsHtml = '';
 
-                // Status 0: Bereit → STARTEN
                 if (a.status === 0) {
                     actionsHtml = `
                         <button class="btn btn-green btn-sm" onclick="startJob(${a.id})">▶️ START</button>
                     `;
                 }
-                // Status 1: Läuft → PAUSE + STOPPEN
                 else if (a.status === 1) {
                     actionsHtml = `
                         <button class="btn btn-orange btn-sm" onclick="pauseJob(${a.id})">⏸ PAUSE</button>
                         <button class="btn btn-red btn-sm" onclick="stopJob(${a.id})">⏹ STOP</button>
                     `;
                 }
-                // Status 3: Pausiert → WEITER + STOPPEN
                 else if (a.status === 3) {
                     actionsHtml = `
                         <button class="btn btn-green btn-sm" onclick="resumeJob(${a.id})">▶️ WEITER</button>
                         <button class="btn btn-red btn-sm" onclick="stopJob(${a.id})">⏹ STOP</button>
                     `;
                 }
-                // Status 2: Fertig → nur Anzeige
                 else {
                     actionsHtml = `<span style="color:#22c55e; font-weight:600; font-size:12px;">✔️ Erledigt</span>`;
                 }
 
-                // Verschieben-Buttons
                 const moveButtons = `
                     <div class="move-buttons">
                         <button class="btn btn-ghost btn-sm" onclick="moveJob(${a.id}, -1)" ${index === 0 ? 'disabled' : ''}>⬆</button>
@@ -325,7 +317,7 @@
             }).join('');
         }
 
-        // ===== CRUD =====
+        // ===== CRUD (MIT FEHLER-DETAILS) =====
         async function save() {
             const name = document.getElementById('inputName').value.trim();
             const street = document.getElementById('inputStreet').value.trim();
@@ -340,20 +332,27 @@
             };
 
             try {
+                console.log('📤 Sende Daten:', JSON.stringify(data));
+
                 const res = await fetch(`${SUPABASE_URL}/rest/v1/auftraege`, {
                     method: 'POST',
                     headers,
                     body: JSON.stringify(data)
                 });
+
+                const responseText = await res.text();
+                console.log('📥 Antwort:', res.status, responseText);
+
                 if (res.ok) {
                     setStatus(`✅ Auftrag erfasst: ${name}`, '#22c55e');
                     document.getElementById('inputName').value = '';
                     document.getElementById('inputStreet').value = '';
                     await loadData();
                 } else {
-                    setStatus(`❌ Fehler: ${res.status}`, '#ef4444');
+                    setStatus(`❌ Fehler: ${res.status} - ${responseText}`, '#ef4444');
                 }
             } catch (e) {
+                console.error('❌ Fehler:', e);
                 setStatus(`❌ Fehler: ${e.message}`, '#ef4444');
             }
         }
@@ -387,14 +386,12 @@
         // ===== PAUSIEREN =====
         async function pauseJob(id) {
             try {
-                // Aktuellen Auftrag laden
                 const res = await fetch(`${SUPABASE_URL}/rest/v1/auftraege?id=eq.${id}`, { headers });
                 const data = await res.json();
                 if (data.length && data[0].startzeit) {
                     const start = parseDatum(data[0].startzeit);
                     const jetzt = new Date();
                     const diff = Math.floor((jetzt - start) / 1000);
-                    // Bisherige Pausen + aktuelle Differenz
                     const altePausen = data[0].pausen_gesamt || 0;
                     const neuePausen = altePausen + diff;
 
@@ -404,7 +401,7 @@
                         body: JSON.stringify({ 
                             status: 3,
                             pausen_gesamt: neuePausen,
-                            startzeit: jetztLokalISO() // Neuen Startzeitpunkt setzen
+                            startzeit: jetztLokalISO()
                         })
                     });
                     if (updateRes.ok) {
@@ -421,28 +418,22 @@
             }
         }
 
-        // ===== WEITER (Resume) =====
+        // ===== WEITER =====
         async function resumeJob(id) {
             try {
-                // Aktuellen Auftrag laden
-                const res = await fetch(`${SUPABASE_URL}/rest/v1/auftraege?id=eq.${id}`, { headers });
-                const data = await res.json();
-                if (data.length) {
-                    // Neue Startzeit setzen (für die nächste Phase)
-                    const updateRes = await fetch(`${SUPABASE_URL}/rest/v1/auftraege?id=eq.${id}`, {
-                        method: 'PATCH',
-                        headers,
-                        body: JSON.stringify({ 
-                            status: 1,
-                            startzeit: jetztLokalISO()
-                        })
-                    });
-                    if (updateRes.ok) {
-                        setStatus('▶️ Auftrag fortgesetzt', '#22c55e');
-                        await loadData();
-                    } else {
-                        setStatus(`❌ Fehler beim Fortsetzen: ${updateRes.status}`, '#ef4444');
-                    }
+                const updateRes = await fetch(`${SUPABASE_URL}/rest/v1/auftraege?id=eq.${id}`, {
+                    method: 'PATCH',
+                    headers,
+                    body: JSON.stringify({ 
+                        status: 1,
+                        startzeit: jetztLokalISO()
+                    })
+                });
+                if (updateRes.ok) {
+                    setStatus('▶️ Auftrag fortgesetzt', '#22c55e');
+                    await loadData();
+                } else {
+                    setStatus(`❌ Fehler beim Fortsetzen: ${updateRes.status}`, '#ef4444');
                 }
             } catch (e) {
                 setStatus(`❌ Fehler: ${e.message}`, '#ef4444');
@@ -457,7 +448,6 @@
                 if (data.length && data[0].startzeit) {
                     const start = parseDatum(data[0].startzeit);
                     const end = new Date();
-                    // Gesamtzeit minus Pausen
                     const gesamt = Math.floor((end - start) / 1000);
                     const pausen = data[0].pausen_gesamt || 0;
                     const netto = Math.max(0, gesamt - pausen);
@@ -492,11 +482,9 @@
                 const newIndex = currentIndex + direction;
                 if (newIndex < 0 || newIndex >= todayJobs.length) return;
 
-                // IDs der beiden zu tauschenden Aufträge
                 const currentJob = todayJobs[currentIndex];
                 const otherJob = todayJobs[newIndex];
 
-                // Temporäre Reihenfolge speichern – wir tauschen die erstellt_am Werte
                 const temp = currentJob.erstellt_am;
                 const update1 = fetch(`${SUPABASE_URL}/rest/v1/auftraege?id=eq.${currentJob.id}`, {
                     method: 'PATCH',
