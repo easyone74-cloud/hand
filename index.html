@@ -227,95 +227,97 @@
             } catch (e) {}
         }
 
-        // ===== LISTE ANZEIGEN =====
         function renderList() {
-            const container = document.getElementById('entries');
-            const heute = new Date().toISOString().slice(0, 10);
-            const rows = auftraege.filter(a => a.tag === heute);
+        const container = document.getElementById('entries');
+        const heute = new Date().toISOString().slice(0, 10);
+        const rows = auftraege.filter(a => a.tag === heute);
 
-            document.getElementById('countBadge').textContent = rows.length;
+        document.getElementById('countBadge').textContent = rows.length;
 
-            if (rows.length === 0) {
-                container.innerHTML = `<div class="text-muted" style="text-align:center; padding:20px;">📭 Keine Aufträge für heute</div>`;
-                return;
+        if (rows.length === 0) {
+            container.innerHTML = `<div class="text-muted" style="text-align:center; padding:20px;">📭 Keine Aufträge für heute</div>`;
+            return;
+        }
+
+        container.innerHTML = rows.map((a, index) => {
+            let dauerText = '';
+
+            // ===== DAUER ANZEIGEN =====
+            if (a.status === 2 && a.dauer) {
+                // Fertig: gespeicherte Dauer anzeigen
+                dauerText = ` (${dauerAnzeigen(a.dauer)})`;
+            } else if (a.status === 1 && a.startzeit) {
+                // Läuft: aktuelle Dauer berechnen (minus Pausen)
+                const start = parseDatum(a.startzeit);
+                if (start) {
+                    const jetzt = new Date();
+                    const diff = Math.floor((jetzt - start) / 1000);
+                    const pausen = a.pausen_gesamt || 0;
+                    const netto = Math.max(0, diff - pausen);
+                    dauerText = ` (${dauerAnzeigen(netto)})`;
+                }
+            } else if (a.status === 3 && a.startzeit) {
+                // Pausiert: bisherige Dauer anzeigen (minus Pausen)
+                const start = parseDatum(a.startzeit);
+                if (start) {
+                    const jetzt = new Date();
+                    const diff = Math.floor((jetzt - start) / 1000);
+                    const pausen = a.pausen_gesamt || 0;
+                    const netto = Math.max(0, diff - pausen);
+                    dauerText = ` (${dauerAnzeigen(netto)})`;
+                }
             }
 
-            container.innerHTML = rows.map((a, index) => {
-                let dauerText = '';
-                let aktiveZeit = a.dauer || 0;
+            let actionsHtml = '';
 
-                if (a.status === 1 && a.startzeit) {
-                    const start = parseDatum(a.startzeit);
-                    if (start) {
-                        const jetzt = new Date();
-                        const diff = Math.floor((jetzt - start) / 1000);
-                        const pausen = a.pausen_gesamt || 0;
-                        const netto = Math.max(0, diff - pausen);
-                        dauerText = ` (${dauerAnzeigen(netto)})`;
-                    }
-                } else if (a.status === 2 && a.dauer) {
-                    dauerText = ` (${dauerAnzeigen(a.dauer)})`;
-                } else if (a.status === 3 && a.startzeit && a.pausen_gesamt) {
-                    const start = parseDatum(a.startzeit);
-                    if (start) {
-                        const jetzt = new Date();
-                        const diff = Math.floor((jetzt - start) / 1000);
-                        const pausen = a.pausen_gesamt || 0;
-                        const netto = Math.max(0, diff - pausen);
-                        dauerText = ` (${dauerAnzeigen(netto)})`;
-                    }
-                }
-
-                let actionsHtml = '';
-
-                if (a.status === 0) {
-                    actionsHtml = `
-                        <button class="btn btn-green btn-sm" onclick="startJob(${a.id})">▶️ START</button>
-                    `;
-                }
-                else if (a.status === 1) {
-                    actionsHtml = `
-                        <button class="btn btn-orange btn-sm" onclick="pauseJob(${a.id})">⏸ PAUSE</button>
-                        <button class="btn btn-red btn-sm" onclick="stopJob(${a.id})">⏹ STOP</button>
-                    `;
-                }
-                else if (a.status === 3) {
-                    actionsHtml = `
-                        <button class="btn btn-green btn-sm" onclick="resumeJob(${a.id})">▶️ WEITER</button>
-                        <button class="btn btn-red btn-sm" onclick="stopJob(${a.id})">⏹ STOP</button>
-                    `;
-                }
-                else {
-                    actionsHtml = `<span style="color:#22c55e; font-weight:600; font-size:12px;">✔️ Erledigt</span>`;
-                }
-
-                const moveButtons = `
-                    <div class="move-buttons">
-                        <button class="btn btn-ghost btn-sm" onclick="moveJob(${a.id}, -1)" ${index === 0 ? 'disabled' : ''}>⬆</button>
-                        <button class="btn btn-ghost btn-sm" onclick="moveJob(${a.id}, 1)" ${index === rows.length - 1 ? 'disabled' : ''}>⬇</button>
-                    </div>
+            if (a.status === 0) {
+                actionsHtml = `
+                    <button class="btn btn-green btn-sm" onclick="startJob(${a.id})">▶️ START</button>
                 `;
+            }
+            else if (a.status === 1) {
+                actionsHtml = `
+                    <button class="btn btn-orange btn-sm" onclick="pauseJob(${a.id})">⏸ PAUSE</button>
+                    <button class="btn btn-red btn-sm" onclick="stopJob(${a.id})">⏹ STOP</button>
+                `;
+            }
+            else if (a.status === 3) {
+                actionsHtml = `
+                    <button class="btn btn-green btn-sm" onclick="resumeJob(${a.id})">▶️ WEITER</button>
+                    <button class="btn btn-red btn-sm" onclick="stopJob(${a.id})">⏹ STOP</button>
+                `;
+            }
+            else {
+                actionsHtml = `<span style="color:#22c55e; font-weight:600; font-size:12px;">✔️ Erledigt</span>`;
+            }
 
-                return `
-                    <div class="entry">
-                        <div class="info">
-                            <div class="name">${a.kunde}</div>
-                            ${a.strasse ? `<div class="street">${a.strasse}</div>` : ''}
-                            <div class="status" style="color:${statusColor(a.status)}">
-                                ${statusText(a.status)}${dauerText}
-                            </div>
-                        </div>
-                        <div style="display:flex; flex-direction:column; align-items:flex-end; gap:4px;">
-                            <div class="entry-actions" style="flex-direction:row; min-width:unset;">
-                                ${actionsHtml}
-                                <button class="btn btn-ghost btn-sm" onclick="deleteJob(${a.id})" style="color:#94a3b8;">🗑️</button>
-                            </div>
-                            ${moveButtons}
+            const moveButtons = `
+                <div class="move-buttons">
+                    <button class="btn btn-ghost btn-sm" onclick="moveJob(${a.id}, -1)" ${index === 0 ? 'disabled' : ''}>⬆</button>
+                    <button class="btn btn-ghost btn-sm" onclick="moveJob(${a.id}, 1)" ${index === rows.length - 1 ? 'disabled' : ''}>⬇</button>
+                </div>
+            `;
+
+            return `
+                <div class="entry">
+                    <div class="info">
+                        <div class="name">${a.kunde}</div>
+                        ${a.strasse ? `<div class="street">${a.strasse}</div>` : ''}
+                        <div class="status" style="color:${statusColor(a.status)}">
+                            ${statusText(a.status)}${dauerText}
                         </div>
                     </div>
-                `;
-            }).join('');
-        }
+                    <div style="display:flex; flex-direction:column; align-items:flex-end; gap:4px;">
+                        <div class="entry-actions" style="flex-direction:row; min-width:unset;">
+                            ${actionsHtml}
+                            <button class="btn btn-ghost btn-sm" onclick="deleteJob(${a.id})" style="color:#94a3b8;">🗑️</button>
+                        </div>
+                        ${moveButtons}
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
 
         // ===== CRUD (MIT FEHLER-DETAILS) =====
         async function save() {
